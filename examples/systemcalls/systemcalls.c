@@ -1,4 +1,12 @@
+#include <sys/types.h>
+#include <sys/wait.h>
+
+#include <unistd.h>
+#include <stdlib.h>
+#include <fcntl.h>
+
 #include "systemcalls.h"
+
 
 /**
  * @param cmd the command to execute with system()
@@ -9,13 +17,17 @@
 */
 bool do_system(const char *cmd)
 {
-
+    int ret;
 /*
  * TODO  add your code here
  *  Call the system() function with the command set in the cmd
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
-*/
+ */
+    ret = system(cmd);
+
+    if (WEXITSTATUS(ret) == 127 || ret == -1)
+        return false;
 
     return true;
 }
@@ -57,8 +69,23 @@ bool do_exec(int count, ...)
  *   (first argument to execv), and use the remaining arguments
  *   as second argument to the execv() command.
  *
-*/
+ */
+    pid_t pid;
+    int wstatus;
 
+    fflush(stdout);
+    pid = fork();
+    if (pid == 0) {
+        execv(command[0], command);
+        exit(-1);
+    }
+
+    wait(&wstatus);
+    if (WEXITSTATUS(wstatus) == 255 || WEXITSTATUS(wstatus)) {
+        va_end(args);
+        return false;
+    }
+   
     va_end(args);
 
     return true;
@@ -92,7 +119,29 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+    pid_t pid;
+    int wstatus, fd, ret;
+    
+    fd = open(outputfile, 
+            O_RDWR | O_TRUNC | O_CREAT, 
+            S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
+    fflush(stdout);
+    pid = fork();
+    if (pid == 0) {
+        if (dup2(fd, 1) < 0)
+            perror("dup2 fail");
+        ret = execv(command[0], command);
+        exit(ret);
+    }
+
+    wait(&wstatus);
+
+    if (WEXITSTATUS(wstatus) == 255 || WEXITSTATUS(wstatus) == 127) {
+        va_end(args);
+        return false;
+    }
+ 
     va_end(args);
 
     return true;
