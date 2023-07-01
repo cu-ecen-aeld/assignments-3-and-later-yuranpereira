@@ -1,0 +1,17 @@
+#!/usr/bin/bash
+
+PROGRAM=aesdsocket
+
+case "$1" in
+    start)
+        echo "Starting $PROGRAM"
+        start-stop-daemon -S -n ${PROGRAM} -a /usr/bin/${PROGRAM} -d
+        ;;
+    stop)
+        echo "Stopping $PROGRAM"
+        start-stop-daemon -K -n ${PROGRAM}
+        ;;
+    *)
+        echo "Usage: $0 {start | stop}"
+    exit 1
+esac
